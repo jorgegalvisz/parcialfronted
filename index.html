@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Juego SimonDice - Dos Jugadores</title>
+<script src="https://gd375r3v-3000.use2.devtunnels.ms/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="estilos.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Juego SimonDice</h1>
+    <div class="info-box">
+      <div id="mensaje">Esperando patrón...</div>
+      <div id="patron"></div>
+      <p class="jugador">Jugador 2 (PC): Usa las flechas ↑ ↓ ← → para responder</p>
+    </div>
+  </div>
+
+  <script>
+    // Conecta con el backend expuesto por Dev Tunnels
+    const socket = io("https://gd375r3v-3000.use2.devtunnels.ms");
+    let jugador1 = prompt("Nombre del Jugador 1 (Arduino):");
+    let jugador2 = prompt("Nombre del Jugador 2 (Teclado PC):");
+    let turnoJugador2 = false;
+
+    socket.emit("nombres", { jugador1, jugador2 });
+
+    socket.on("patron", (patron) => {
+      document.getElementById("mensaje").textContent = "¡Prepárense!";
+      document.getElementById("patron").textContent = "";
+      setTimeout(() => {
+        document.getElementById("mensaje").textContent = "Miren el patrón:";
+        document.getElementById("patron").textContent = patron.join(" ➜ ");
+
+        let tiempoVisible = 2000 + patron.length * 500;
+        setTimeout(() => {
+          document.getElementById("mensaje").textContent = "Jugador 1 (Arduino) está respondiendo...";
+          document.getElementById("patron").textContent = "";
+        }, tiempoVisible);
+      }, 2000);
+    });
+
+    socket.on("turno-jugador2", () => {
+      turnoJugador2 = true;
+      document.getElementById("mensaje").textContent = "¡Es tu turno, Jugador 2! Usa las flechas.";
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (!turnoJugador2) return;
+
+      const teclas = { ArrowUp: "UP", ArrowDown: "DOWN", ArrowLeft: "LEFT", ArrowRight: "RIGHT" };
+      if (teclas[e.key]) {
+        console.log("Jugador 2 presionó:", teclas[e.key]);
+        socket.emit("jugada", { jugador: jugador2, respuesta: teclas[e.key] });
+      }
+    });
+
+    socket.on("ganador", (g) => {
+      document.getElementById("mensaje").textContent = `🎉 ¡Ganó ${g}!`;
+      turnoJugador2 = false;
+    });
+
+    socket.on("ambos-correcto", (nivel) => {
+      document.getElementById("mensaje").textContent = `✅ ¡Ambos acertaron! Siguiente nivel: ${nivel}`;
+      turnoJugador2 = false;
+    });
+
+    socket.on("ninguno", (nivel) => {
+      document.getElementById("mensaje").textContent = `❌ Nadie acertó. Nivel se mantiene en: ${nivel}`;
+      turnoJugador2 = false;
+    });
+  </script>
+</body>
+</html>
